@@ -1,35 +1,45 @@
 /**
- * DentalCare Studio - Optimized Premium Script
+ * DentalCare Studio - Optimized Premium Script (Mobile-friendly)
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-    
+
+    // --- Detección de dispositivo táctil ---
+    // En touch no hay mouse real, así que desactivamos el cursor personalizado
+    // (evita cursores "fantasma" pegados en la última posición tocada en iOS/Android).
+    const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    if (isTouchDevice) {
+        document.body.classList.add('touch-device');
+    }
+
     // --- Custom Cursor ---
     const cursor = document.querySelector('.custom-cursor');
     const cursorOutline = document.querySelector('.custom-cursor-outline');
-    
-    document.addEventListener('mousemove', (e) => {
-        cursor.style.left = e.clientX + 'px';
-        cursor.style.top = e.clientY + 'px';
-        cursorOutline.animate({
-            left: `${e.clientX}px`,
-            top: `${e.clientY}px`
-        }, { duration: 500, fill: "forwards" });
-    });
 
-    const interactive = document.querySelectorAll('a, button, .faq-question, .gallery-item');
-    interactive.forEach(el => {
-        el.addEventListener('mouseenter', () => {
-            cursorOutline.style.width = '60px';
-            cursorOutline.style.height = '60px';
-            cursorOutline.style.background = 'rgba(6, 182, 212, 0.1)';
+    if (!isTouchDevice) {
+        document.addEventListener('mousemove', (e) => {
+            cursor.style.left = e.clientX + 'px';
+            cursor.style.top = e.clientY + 'px';
+            cursorOutline.animate({
+                left: `${e.clientX}px`,
+                top: `${e.clientY}px`
+            }, { duration: 500, fill: "forwards" });
         });
-        el.addEventListener('mouseleave', () => {
-            cursorOutline.style.width = '40px';
-            cursorOutline.style.height = '40px';
-            cursorOutline.style.background = 'transparent';
+
+        const interactive = document.querySelectorAll('a, button, .faq-question, .gallery-item');
+        interactive.forEach(el => {
+            el.addEventListener('mouseenter', () => {
+                cursorOutline.style.width = '60px';
+                cursorOutline.style.height = '60px';
+                cursorOutline.style.background = 'rgba(6, 182, 212, 0.1)';
+            });
+            el.addEventListener('mouseleave', () => {
+                cursorOutline.style.width = '40px';
+                cursorOutline.style.height = '40px';
+                cursorOutline.style.background = 'transparent';
+            });
         });
-    });
+    }
 
     // --- Navbar Scroll ---
     const header = document.querySelector('#header');
@@ -40,14 +50,30 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Mobile Menu ---
     const burger = document.querySelector('.burger');
     const nav = document.querySelector('.nav-links');
-    const navLinks = document.querySelectorAll('.nav-links li');
+    const navLinks = document.querySelectorAll('.nav-links a');
 
-    burger.addEventListener('click', () => {
-        nav.classList.toggle('nav-active');
-        burger.classList.toggle('toggle');
-        navLinks.forEach((link, i) => {
-            link.style.animation = link.style.animation ? '' : `navLinkFade 0.5s ease forwards ${i / 7 + 0.3}s`;
-        });
+    const closeMenu = () => {
+        nav.classList.remove('nav-active');
+        burger.classList.remove('toggle');
+        document.body.classList.remove('nav-open');
+    };
+
+    const toggleMenu = () => {
+        const isOpen = nav.classList.toggle('nav-active');
+        burger.classList.toggle('toggle', isOpen);
+        document.body.classList.toggle('nav-open', isOpen);
+    };
+
+    burger.addEventListener('click', toggleMenu);
+
+    // Cierra el menú al tocar un enlace (mejora UX en móvil de una sola página)
+    navLinks.forEach(link => {
+        link.addEventListener('click', closeMenu);
+    });
+
+    // Cierra el menú si cambia el tamaño de pantalla a escritorio
+    window.addEventListener('resize', () => {
+        if (window.innerWidth > 768) closeMenu();
     });
 
     // --- Scroll Reveal ---
@@ -81,17 +107,22 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    const statsObserver = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting) {
-            startCounters();
-            statsObserver.unobserve(entries[0].target);
-        }
-    }, { threshold: 0.5 });
-    statsObserver.observe(document.querySelector('.stats'));
+    const statsSection = document.querySelector('.stats');
+    if (statsSection) {
+        const statsObserver = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting) {
+                startCounters();
+                statsObserver.unobserve(entries[0].target);
+            }
+        }, { threshold: 0.5 });
+        statsObserver.observe(statsSection);
+    }
 
     // --- Lightbox ---
     const lightbox = document.getElementById('lightbox');
     const lightboxImg = document.getElementById('lightbox-img');
+    const closeLightboxBtn = document.querySelector('.close-lightbox');
+
     document.querySelectorAll('.gallery-item img').forEach(img => {
         img.addEventListener('click', () => {
             lightbox.style.display = 'flex';
@@ -100,21 +131,32 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    lightbox.addEventListener('click', () => {
+    const closeLightbox = () => {
         lightbox.style.display = 'none';
-        document.body.style.overflow = 'auto';
-    });
+        document.body.style.overflow = '';
+    };
 
-    // --- Testimonial Slider ---
+    lightbox.addEventListener('click', closeLightbox);
+    if (closeLightboxBtn) {
+        closeLightboxBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            closeLightbox();
+        });
+    }
+
+    // --- Testimonial Slider (con soporte de swipe táctil) ---
     const track = document.querySelector('.testimonial-track');
     const slides = Array.from(track.children);
     const dotsNav = document.querySelector('.slider-dots');
-    
+
     slides.forEach((_, i) => {
         const dot = document.createElement('div');
         dot.classList.add('dot');
         if (i === 0) dot.classList.add('active');
-        dot.addEventListener('click', () => moveToSlide(i));
+        dot.addEventListener('click', () => {
+            slideIndex = i;
+            moveToSlide(slideIndex);
+        });
         dotsNav.appendChild(dot);
     });
 
@@ -125,10 +167,38 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     let slideIndex = 0;
-    setInterval(() => {
+    let autoSlide = setInterval(() => {
         slideIndex = (slideIndex + 1) % slides.length;
         moveToSlide(slideIndex);
     }, 5000);
+
+    // Swipe táctil para el slider de testimonios
+    let touchStartX = 0;
+    let touchEndX = 0;
+
+    track.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+        clearInterval(autoSlide);
+    }, { passive: true });
+
+    track.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        const diff = touchStartX - touchEndX;
+        const threshold = 40;
+
+        if (diff > threshold) {
+            slideIndex = (slideIndex + 1) % slides.length;
+            moveToSlide(slideIndex);
+        } else if (diff < -threshold) {
+            slideIndex = (slideIndex - 1 + slides.length) % slides.length;
+            moveToSlide(slideIndex);
+        }
+
+        autoSlide = setInterval(() => {
+            slideIndex = (slideIndex + 1) % slides.length;
+            moveToSlide(slideIndex);
+        }, 5000);
+    }, { passive: true });
 
     // --- FAQ ---
     document.querySelectorAll('.faq-question').forEach(q => {
@@ -140,9 +210,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Ripple Effect ---
     document.querySelectorAll('.ripple').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            const x = e.clientX - e.target.getBoundingClientRect().left;
-            const y = e.clientY - e.target.getBoundingClientRect().top;
+        btn.addEventListener('click', function (e) {
+            const rect = this.getBoundingClientRect();
+            const clientX = e.clientX || (e.changedTouches && e.changedTouches[0].clientX) || rect.width / 2;
+            const clientY = e.clientY || (e.changedTouches && e.changedTouches[0].clientY) || rect.height / 2;
+            const x = clientX - rect.left;
+            const y = clientY - rect.top;
             const ripple = document.createElement('span');
             ripple.style.left = x + 'px';
             ripple.style.top = y + 'px';
