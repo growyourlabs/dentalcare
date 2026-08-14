@@ -56,12 +56,14 @@ document.addEventListener('DOMContentLoaded', () => {
         nav.classList.remove('nav-active');
         burger.classList.remove('toggle');
         document.body.classList.remove('nav-open');
+        burger.setAttribute('aria-expanded', 'false');
     };
 
     const toggleMenu = () => {
         const isOpen = nav.classList.toggle('nav-active');
         burger.classList.toggle('toggle', isOpen);
         document.body.classList.toggle('nav-open', isOpen);
+        burger.setAttribute('aria-expanded', String(isOpen));
     };
 
     burger.addEventListener('click', toggleMenu);
@@ -118,31 +120,54 @@ document.addEventListener('DOMContentLoaded', () => {
         statsObserver.observe(statsSection);
     }
 
-    // --- Lightbox ---
+    // --- Lightbox (accesible por teclado) ---
     const lightbox = document.getElementById('lightbox');
     const lightboxImg = document.getElementById('lightbox-img');
     const closeLightboxBtn = document.querySelector('.close-lightbox');
+    let lastFocusedElement = null;
 
-    document.querySelectorAll('.gallery-item img').forEach(img => {
-        img.addEventListener('click', () => {
-            lightbox.style.display = 'flex';
-            lightboxImg.src = img.src;
-            document.body.style.overflow = 'hidden';
+    const openLightbox = (item) => {
+        const img = item.querySelector('img');
+        lastFocusedElement = item;
+        lightbox.style.display = 'flex';
+        lightbox.setAttribute('aria-hidden', 'false');
+        lightboxImg.src = img.src;
+        lightboxImg.alt = img.alt || '';
+        document.body.style.overflow = 'hidden';
+        closeLightboxBtn.focus();
+    };
+
+    document.querySelectorAll('.gallery-item').forEach(item => {
+        item.addEventListener('click', () => openLightbox(item));
+        item.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                openLightbox(item);
+            }
         });
     });
 
     const closeLightbox = () => {
         lightbox.style.display = 'none';
+        lightbox.setAttribute('aria-hidden', 'true');
         document.body.style.overflow = '';
+        if (lastFocusedElement) lastFocusedElement.focus();
     };
 
-    lightbox.addEventListener('click', closeLightbox);
+    lightbox.addEventListener('click', (e) => {
+        if (e.target === lightbox) closeLightbox();
+    });
     if (closeLightboxBtn) {
         closeLightboxBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             closeLightbox();
         });
     }
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && lightbox.style.display === 'flex') {
+            closeLightbox();
+        }
+    });
 
     // --- Testimonial Slider (con soporte de swipe táctil) ---
     const track = document.querySelector('.testimonial-track');
@@ -150,8 +175,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const dotsNav = document.querySelector('.slider-dots');
 
     slides.forEach((_, i) => {
-        const dot = document.createElement('div');
+        const dot = document.createElement('button');
+        dot.type = 'button';
         dot.classList.add('dot');
+        dot.setAttribute('aria-label', `Ir al testimonio ${i + 1}`);
         if (i === 0) dot.classList.add('active');
         dot.addEventListener('click', () => {
             slideIndex = i;
